@@ -1,5 +1,4 @@
-using System.Collections;
-using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -9,22 +8,31 @@ public class MainManager : MonoBehaviour
     public Brick BrickPrefab;
     public int LineCount = 6;
     public Rigidbody Ball;
-
     public Text ScoreText;
     public GameObject GameOverText;
-    
+    public Text BestScoreText; // Pour afficher le meilleur score
+
     private bool m_Started = false;
     private int m_Points;
-    
     private bool m_GameOver = false;
+    private string filePath;  // Déclaration du chemin de fichier
+    private PlayerData playerData = new PlayerData();
 
-    
-    // Start is called before the first frame update
+    void Awake()
+    {
+        // Initialisation correcte de filePath dans Awake
+        filePath = Application.persistentDataPath + "/playerdata.json";
+        Debug.Log("File path: " + filePath);  // Ajoute cette ligne pour vérifier le chemin
+    }
+
     void Start()
     {
+        LoadData(); // Charger les données du meilleur score au démarrage
+        UpdateBestScoreText();
+
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
-        
+
         int[] pointCountArray = new [] {1,1,2,2,5,5};
         for (int i = 0; i < LineCount; ++i)
         {
@@ -57,6 +65,7 @@ public class MainManager : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.Space))
             {
+                SaveData(); // Sauvegarder les données avant de recharger la scène
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             }
         }
@@ -72,5 +81,39 @@ public class MainManager : MonoBehaviour
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+    }
+
+    private void SaveData()
+    {
+        if (m_Points > playerData.highScore)
+        {
+            playerData.highScore = m_Points;
+            playerData.playerName = PlayerPrefs.GetString("PlayerName", "Unknown Player");
+            Debug.Log("New high score: " + playerData.highScore + " by " + playerData.playerName);
+        }
+
+        string json = JsonUtility.ToJson(playerData);
+        File.WriteAllText(filePath, json);
+        Debug.Log("Data saved to: " + filePath);
+    }
+
+    private void LoadData()
+    {
+        if (File.Exists(filePath))
+        {
+            string json = File.ReadAllText(filePath);
+            playerData = JsonUtility.FromJson<PlayerData>(json);
+            Debug.Log("Data loaded: " + json);
+        }
+        else
+        {
+            Debug.Log("No saved data found at: " + filePath);
+        }
+    }
+
+    private void UpdateBestScoreText()
+    {
+        BestScoreText.text = $"Best Score: {playerData.highScore} by {playerData.playerName}";
+        Debug.Log("Best score text updated: " + BestScoreText.text);
     }
 }
